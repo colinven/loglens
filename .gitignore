@@ -1,0 +1,8 @@
+# Maven build artifacts
+loglens/target
+
+# Internal spec docs
+specs/
+
+#IDE
+.idea/
