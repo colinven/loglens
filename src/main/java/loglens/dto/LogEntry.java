@@ -3,11 +3,11 @@ package loglens.dto;
 import java.time.Instant;
 
 public record LogEntry(
+        String ip,
         Instant timestamp,
-        HttpStatus status,
         HttpMethod method,
         String uri,
-        String ip,
+        HttpStatus status,
         long bytesSent
 ) {
 }
