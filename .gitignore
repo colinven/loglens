@@ -1,5 +1,5 @@
 # Maven build artifacts
-loglens/target
+target/
 
 # Internal spec docs
 specs/

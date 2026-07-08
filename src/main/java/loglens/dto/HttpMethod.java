@@ -1,5 +1,5 @@
 package loglens.dto;
 
 public enum HttpMethod {
-    GET, POST, PUT, PATCH, HEAD, DELETE
+    GET, POST, PUT, PATCH, QUERY, HEAD, DELETE
 }

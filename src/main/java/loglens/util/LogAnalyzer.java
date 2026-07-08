@@ -1,7 +1,16 @@
 package loglens.util;
 
+import loglens.dto.LogAnalysis;
+import loglens.dto.LogEntry;
+
+import java.time.Instant;
+import java.util.List;
+
 public class LogAnalyzer {
 
+    public LogAnalysis analyze(List<LogEntry> logEntries, Instant analysisWindowStartTime) {
+        return null;
+    }
     /*
 
       This class will be responsible for generating reports based on the list of log entries.
