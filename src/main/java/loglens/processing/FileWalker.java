@@ -19,9 +19,26 @@ import java.util.zip.GZIPInputStream;
 
 public class FileWalker {
 
+    private final CombinedLogParser combinedLogParser;
+    private final CommonLogParser commonLogParser;
+    private final JsonLogParser jsonLogParser; // { JSON PARSING NOT YET IMPLEMENTED }
+
     private int totalFilesSkipped = 0;
     private long totalLinesSkipped = 0;
 
+    public FileWalker() {
+        combinedLogParser = new CombinedLogParser();
+        commonLogParser = new CommonLogParser();
+        jsonLogParser = new JsonLogParser();  // { JSON PARSING NOT YET IMPLEMENTED }
+    }
+
+    /**
+     * Reads all valid log entries from all files/subdirectories within a provided directory and accumulates
+     * them into a list.
+     * @param directory the directory to traverse
+     * @return a list containing all valid log entries within all subdirectories of the provided directory.
+     * If no valid entries are found, this method returns an empty list.
+     */
     public List<LogEntry> processFiles(Path directory) {
 
         List<LogEntry> allEntries = List.of();
@@ -29,30 +46,50 @@ public class FileWalker {
         try (Stream<Path> paths = Files.walk(directory)) {
 
             allEntries = paths.filter(Files::isRegularFile)
-                    .map(this::parseFile)
+                    .map(path -> {
+                        try {
+                            return parseFile(path);
+                        } catch (IOException e) {
+                            // If file is unreadable, skip it, keep moving
+                            System.err.println("[loglens]: skipping " + path + ": " + e.getMessage());
+                            return List.<LogEntry>of();
+                        }
+                    })
                     .filter(list -> list != null && !list.isEmpty())
                     .flatMap(Collection::stream)
                     .toList();
 
         } catch (IOException e) {
-            System.err.println("loglens: Error: could not process files");
+            System.err.println("[loglens]: Error: unable to walk " + directory + ": " + e.getMessage());
             System.exit(1);
         }
         return allEntries;
     }
 
-    private List<LogEntry> parseFile(Path path) {
+    /**
+     * Reads a single file at the provided path, parses all valid log line entries into LogEntry objects,
+     * and accumulates them into a list.
+     * <p>Side effect: increments totalLinesSkipped and totalFilesSkipped when a line/file is not parsable.</p>
+     * @param path the path to the log file
+     * @return a List<LogEntry> containing every valid log entry parsed from the provided path
+     * @throws IOException when unable to read file
+     */
+    private List<LogEntry> parseFile(Path path) throws IOException {
 
         List<LogEntry> logEntries = List.of();
 
-        try(InputStream rawStream = Files.newInputStream(path);
-            InputStream finalStream = (isGzipStream(rawStream)) ? new GZIPInputStream(rawStream) : rawStream;
+        InputStream rawStream = Files.newInputStream(path);
+        BufferedInputStream sniffStream = new BufferedInputStream(rawStream);
+        boolean gzipped = isGzipStream(sniffStream);
+        try(
+            InputStream finalStream = gzipped ? new GZIPInputStream(sniffStream) : sniffStream;
             BufferedReader reader = new BufferedReader(new InputStreamReader(finalStream));) {
 
             LogParser parser = detectLogParser(reader);
 
             // No valid log format was detected —> unable to parse file —> bail
             if (parser == null) {
+                System.err.println("[loglens]: Could not parse " + path + ", skipping file...");
                 totalFilesSkipped++;
                 return logEntries;
             }
@@ -73,48 +110,39 @@ public class FileWalker {
                     .map(Optional::get)
                     .toList();
 
-        } catch (IOException e) {
-            System.err.printf("[loglens]: Error: could not read file \"%s\"%n", path);
         }
         return logEntries;
     }
 
-    private boolean isGzipStream(InputStream inputStream) throws IOException {
-
-        try (PushbackInputStream pbStream = new PushbackInputStream(inputStream, 2)) {
-
-            // Read first 2 bytes of stream
-            int byte1 = pbStream.read();
-            int byte2 = pbStream.read();
-
-            // Check for EOF
-            if (byte1 == -1 || byte2 == -1) {
-                // Pushback any bytes we were able to read
-                if (byte1 != -1) pbStream.unread(byte1);
-                if (byte2 != -1) pbStream.unread(byte2);
-                return false;
-            }
-
-            // Sniff for Gzip magic number
-            boolean isGzip = (byte1 == 0x1F) && (byte2 == 0x8B);
-
-            // Unread
-            pbStream.unread(byte1);
-            pbStream.unread(byte2);
-
-            return isGzip;
+    /**
+     * Reads first 2 bytes of a file input stream and attempts to match them against GZIP magic number (0x1F 0x8B)
+     * @param in input stream to check
+     * @return true if stream contains Gzip header, false otherwise
+     * @throws IOException if unable to read stream
+     */
+    private boolean isGzipStream(BufferedInputStream in) throws IOException {
+        in.mark(2);
+        try {
+            int byte1 = in.read();
+            int byte2 = in.read();
+            return (byte1 == 0x1F) && (byte2 == 0x8B);
+        } finally {
+            in.reset();
         }
     }
 
+    /**
+     * Sniffs first 5 lines from reader, detects which LogParser impl matches the format, and returns
+     * that particular implementation.
+     * @param reader BufferedReader to read from
+     * @return LogParser impl corresponding to the log format read from reader, or NULL if no match is found.
+     * @throws IOException if unable to read stream
+     */
     private LogParser detectLogParser(BufferedReader reader) throws IOException {
-
-        var combinedLogParser = new CombinedLogParser();
-        var commonLogParser = new CommonLogParser();
-        var jsonLogParser = new JsonLogParser();
 
         LogParser detectedParser = null;
 
-        final int TEST_LINE_LIMIT = 5; // Read maximum of 5 lines to determine LogParser impl
+        final int TEST_LINE_LIMIT = 5; // Max number of lines to attempt to read/assign before skipping file entirely
         final int READ_AHEAD_LIMIT = 8192; // mark() buffer size — 8KB (maybe overkill)
 
         int linesRead = 0;
@@ -140,6 +168,14 @@ public class FileWalker {
         }
         reader.reset();
         return detectedParser;
+    }
+
+    public int getTotalFilesSkipped() {
+        return totalFilesSkipped;
+    }
+
+    public long getTotalLinesSkipped() {
+        return totalLinesSkipped;
     }
 }
 
