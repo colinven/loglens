@@ -58,6 +58,11 @@ public class App implements Runnable {
         List<LogEntry> logEntries = fileWalker.processFiles(filePath); // Process all log entries
         LogAnalysis analysis = logAnalyzer.analyze(logEntries, resolvedStartTime); // Generate full analysis
         logAnalyzer.printAnalysis(analysis);
+
+        System.out.println();
+        System.out.println("[loglens]: Analysis complete.");
+        System.out.println("[loglens]: Reader skipped " + fileWalker.getTotalLinesSkipped() + " lines (unable to parse format).");
+        System.out.println("[loglens]: Reader skipped " + fileWalker.getTotalFilesSkipped() + " invalid log files.");
     }
 
     public static void main(String[] args) {
