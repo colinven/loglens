@@ -6,6 +6,3 @@ specs/
 
 #IDE
 .idea/
-
-#Testing purposes
-test_logs/
