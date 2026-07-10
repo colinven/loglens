@@ -45,20 +45,19 @@ public class App implements Runnable {
             System.err.println("[loglens]: Error: No such file or directory");
             System.exit(1);
         }
-        System.out.println("[loglens]: Reading files from: " + filePath);
 
         Instant resolvedStartTime = null;
         // If '--last' arg passed, resolve time window start
         if (!inputDuration.isBlank()) {
             if ((resolvedStartTime = timeParser.parseAndSubtract(inputDuration, Instant.now())) == null) {
                 // Parser rejected duration input
-                System.err.printf("[loglens]: Unable to parse input duration: \"%s\". Defaulting to no time window...%n", inputDuration);
+                System.err.printf("[loglens]: Error: Invalid time duration: \"%s\". See 'loglens --help' for usage.%n", inputDuration);
+                System.exit(1);
             }
         }
         List<LogEntry> logEntries = fileWalker.processFiles(filePath); // Process all log entries
         LogAnalysis analysis = logAnalyzer.analyze(logEntries, resolvedStartTime); // Generate full analysis
-
-        analysis.print(); // Print results
+        logAnalyzer.printAnalysis(analysis);
     }
 
     public static void main(String[] args) {
