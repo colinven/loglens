@@ -46,8 +46,8 @@ public class LogAnalyzer {
         renderBarChart(requestCountByIpMap, "Top 10 Highest-Requesting IPs");
         System.out.println();
 
-        System.out.printf("Requests with 4xx status code: %.1f %s%n", (logAnalysis.errorRate4xx() * 100), "%");
-        System.out.printf("Requests with 5xx status code: %.1f %s%n", (logAnalysis.errorRate5xx() * 100), "%");
+        System.out.printf("[loglens]: Requests with 4xx status code: %.1f %s%n", (logAnalysis.errorRate4xx() * 100), "%");
+        System.out.printf("[loglens]: Requests with 5xx status code: %.1f %s%n", (logAnalysis.errorRate5xx() * 100), "%");
     }
 
     private void renderBarChart(Map<String, Long> data, String chartTitle) {
