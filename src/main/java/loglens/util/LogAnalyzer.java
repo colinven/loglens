@@ -37,6 +37,7 @@ public class LogAnalyzer {
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 
         Map<String, Long> requestCountByIpMap = logAnalysis.requestCountByIpMap().entrySet().stream()
+                .sorted(Map.Entry.<String, Long>comparingByValue().reversed())
                 .limit(TOP_N_IP_LIMIT)
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 
